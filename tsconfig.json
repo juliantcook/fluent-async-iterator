@@ -1,0 +1,14 @@
+{
+    "compilerOptions": {
+        "strictNullChecks": true,
+        "allowJs": true,
+        "target": "es6",
+        "outDir": "dist",
+        "moduleResolution": "node",
+        "declaration": true
+    },
+    "exclude": [
+        "./src/*.test.ts",
+        "./dist/**"
+    ]
+}
