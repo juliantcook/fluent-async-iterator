@@ -1,6 +1,6 @@
 {
     "name": "fluent-async-generator",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "AsnycGenerator wrapper to provide a fluent API.",
     "main": "dist/fluent-async-generator.js",
     "files": [

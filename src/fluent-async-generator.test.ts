@@ -11,9 +11,9 @@ describe('toGroupedGenerator', () => {
                 { foo: '3', bar: 'd' },
             ];
         }
-        const groupedGenerator = toGroupedGenerator(objectsSortedByKey, 'foo');
+        const groupedGenerator = toGroupedGenerator(objectsSortedByKey(), 'foo');
         const results: any[] = [];
-        for await (const group of groupedGenerator()) {
+        for await (const group of groupedGenerator) {
             results.push(group);
         }
         assert.deepEqual(results, [
@@ -27,9 +27,9 @@ describe('toGroupedGenerator', () => {
         async function* objectsSortedByKey() {
             yield* [];
         }
-        const groupedGenerator = toGroupedGenerator(objectsSortedByKey, 'foo');
+        const groupedGenerator = toGroupedGenerator(objectsSortedByKey(), 'foo');
         const results: any[] = [];
-        for await (const group of groupedGenerator()) {
+        for await (const group of groupedGenerator) {
             results.push(group);
         }
         assert.deepEqual(results, []);
@@ -41,9 +41,9 @@ describe('batchGenerator', () => {
         async function* source() {
             yield* [1, 2, 3, 4, 5];
         }
-        const batched = batchGenerator(source, 2);
+        const batched = batchGenerator(source(), 2);
         const results: any[] = [];
-        for await (const batch of batched()) {
+        for await (const batch of batched) {
             results.push(batch);
         }
         assert.deepEqual(results, [
@@ -57,9 +57,9 @@ describe('batchGenerator', () => {
         async function* source() {
             yield* [];
         }
-        const batched = batchGenerator(source, 2);
+        const batched = batchGenerator(source(), 2);
         const results: any[] = [];
-        for await (const batch of batched()) {
+        for await (const batch of batched) {
             results.push(batch);
         }
         assert.deepEqual(results, []);
@@ -71,7 +71,7 @@ describe('FluentAsyncGenerator', () => {
         async function* source() {
             yield* [1, 2, 3, 4, 5];
         }
-        const stream = new FluentAsyncGenerator(source);
+        const stream = new FluentAsyncGenerator(source());
         assert.deepEqual(await stream.collect(), [1, 2, 3, 4, 5])
     });
 
@@ -79,7 +79,7 @@ describe('FluentAsyncGenerator', () => {
         async function* source() {
             yield* [1, 2, 3, 4, 5];
         }
-        const stream = new FluentAsyncGenerator(source);
+        const stream = new FluentAsyncGenerator(source());
         assert.deepEqual(await stream.batch(2).collect(), [
             [1, 2],
             [3, 4],
@@ -96,7 +96,7 @@ describe('FluentAsyncGenerator', () => {
                 { foo: '3', bar: 'd' },
             ];
         }
-        const stream = new FluentAsyncGenerator(objectsSortedByKey);
+        const stream = new FluentAsyncGenerator(objectsSortedByKey());
         assert.deepEqual(await stream.group('foo').collect(), [
             { key: '1', group: [{ foo: '1', bar: 'a' }, { foo: '1', bar: 'b' }] },
             { key: '2', group: [{ foo: '2', bar: 'c' }] },
@@ -108,7 +108,7 @@ describe('FluentAsyncGenerator', () => {
         async function* source() {
             yield* [1, 2, 3];
         }
-        const stream = new FluentAsyncGenerator(source);
+        const stream = new FluentAsyncGenerator(source());
         const results = await stream.map(x => x * 2).collect();
         assert.deepEqual(results, [2, 4, 6]);
     })
@@ -117,10 +117,10 @@ describe('FluentAsyncGenerator', () => {
         async function* source() {
             yield* [1, 2, 3];
         }
-        const stream = new FluentAsyncGenerator(source);
+        const stream = new FluentAsyncGenerator(source());
         const generator = stream.map(x => x * 2).generator();
         const results: any[] = [];
-        for await (const item of generator()) {
+        for await (const item of generator) {
             results.push(item);
         }
         assert.deepEqual(results, [2, 4, 6]);
@@ -130,7 +130,7 @@ describe('FluentAsyncGenerator', () => {
         async function* source() {
             yield* [1, 2, 3];
         }
-        const stream = new FluentAsyncGenerator(source);
+        const stream = new FluentAsyncGenerator(source());
         const results = await stream.filter(x => x !== 2).collect();
         assert.deepEqual(results, [1, 3]);
     })
@@ -139,9 +139,24 @@ describe('FluentAsyncGenerator', () => {
         async function* source() {
             yield* [];
         }
-        const stream = new FluentAsyncGenerator(source);
+        const stream = new FluentAsyncGenerator(source());
         const results = await stream.filter(x => x !== 2).collect();
         assert.deepEqual(results, []);
+    })
+
+    it('is lazy', async () => {
+        let generatorInvoked = false
+        async function* source() {
+            generatorInvoked = true
+            yield 2
+        }
+        let stream = new FluentAsyncGenerator(source())
+        assert(!generatorInvoked)
+        stream = stream.map(x => x + x)
+        assert(!generatorInvoked)
+        const result = await stream.collect()
+        assert(generatorInvoked)
+        assert.deepEqual(result, [4])
     })
 
 });
