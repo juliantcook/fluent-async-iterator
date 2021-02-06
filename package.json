@@ -1,8 +1,8 @@
 {
-    "name": "fluent-async-generator",
-    "version": "0.0.1",
-    "description": "AsnycGenerator wrapper to provide a fluent API.",
-    "main": "dist/fluent-async-generator.js",
+    "name": "fluent-async-iterator",
+    "version": "0.0.2",
+    "description": "AsnycIterator wrapper to provide a fluent API.",
+    "main": "dist/fluent-async-iterator.js",
     "files": [
         "dist/"
     ],
@@ -13,7 +13,7 @@
         "clean": "rm -rf dist"
     },
     "author": "Julian Cook",
-    "homepage": "https://github.com/juliantcook/fluent-async-generator",
+    "homepage": "https://github.com/juliantcook/fluent-async-iterator",
     "license": "ISC",
     "devDependencies": {
         "@types/mocha": "^8.2.0",
@@ -25,15 +25,18 @@
     "dependencies": {},
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/juliantcook/fluent-async-generator.git"
+        "url": "git+https://github.com/juliantcook/fluent-async-iterator.git"
     },
     "keywords": [
+        "async-await",
         "async",
+        "iterator",
+        "iterable",
         "generator",
         "fluent",
         "lazy"
     ],
     "bugs": {
-        "url": "https://github.com/juliantcook/fluent-async-generator/issues"
+        "url": "https://github.com/juliantcook/fluent-async-iterator/issues"
     }
 }

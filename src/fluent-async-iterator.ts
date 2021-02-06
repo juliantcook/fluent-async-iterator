@@ -6,7 +6,7 @@ interface GroupedByKey<T> {
 /**
  * The items must already be sorted by their key.
  */
-export async function* toGroupedGenerator<T>(sortedSource: AsyncGenerator<T>, groupBy: string): AsyncGenerator<GroupedByKey<T>> {
+export async function* groupIterator<T>(sortedSource: AsyncIterable<T>, groupBy: string): AsyncIterable<GroupedByKey<T>> {
     let currentGroup: GroupedByKey<T> | undefined;
     const setCurrentGroup = item => currentGroup = { key: item[groupBy], group: [item] };
     for await (const item of sortedSource) {
@@ -24,13 +24,13 @@ export async function* toGroupedGenerator<T>(sortedSource: AsyncGenerator<T>, gr
     }
 }
 
-export async function* mapGenerator<T, U>(source: AsyncGenerator<T>, func: (i: T) => U): AsyncGenerator<U> {
+export async function* mapIterator<T, U>(source: AsyncIterable<T>, func: (i: T) => U): AsyncIterable<U> {
     for await (const item of source) {
         yield func(item);
     }
 }
 
-export async function* batchGenerator<T>(source: AsyncGenerator<T>, size: number): AsyncGenerator<T[]> {
+export async function* batchIterator<T>(source: AsyncIterable<T>, size: number): AsyncIterable<T[]> {
     let batch: T[] = [];
     for await (const item of source) {
         if (batch.length < size) {
@@ -45,7 +45,7 @@ export async function* batchGenerator<T>(source: AsyncGenerator<T>, size: number
     }
 }
 
-export async function* filterGenerator<T>(source: AsyncGenerator<T>, predicate: (p: T) => boolean): AsyncGenerator<T> {
+export async function* filterIterator<T>(source: AsyncIterable<T>, predicate: (p: T) => boolean): AsyncIterable<T> {
     for await (const item of source) {
         if (predicate(item)) {
             yield item;
@@ -53,8 +53,12 @@ export async function* filterGenerator<T>(source: AsyncGenerator<T>, predicate: 
     }
 }
 
-export class FluentAsyncGenerator<T> {
-    constructor(private source: AsyncGenerator<T>) { }
+export function iterator<T>(source: AsyncIterable<T>): FluentAsyncIterator<T> {
+    return new FluentAsyncIterator(source);
+}
+
+export class FluentAsyncIterator<T> {
+    constructor(private source: AsyncIterable<T>) { }
 
     async collect(): Promise<T[]> {
         const results: T[] = [];
@@ -64,23 +68,23 @@ export class FluentAsyncGenerator<T> {
         return results;
     }
 
-    generator(): AsyncGenerator<T> {
+    iterable(): AsyncIterable<T> {
         return this.source;
     }
 
-    batch(size: number): FluentAsyncGenerator<T[]> {
-        return new FluentAsyncGenerator(batchGenerator(this.source, size));
+    batch(size: number): FluentAsyncIterator<T[]> {
+        return new FluentAsyncIterator(batchIterator(this.source, size));
     }
 
-    group(key: string): FluentAsyncGenerator<GroupedByKey<T>> {
-        return new FluentAsyncGenerator(toGroupedGenerator(this.source, key));
+    group(key: string): FluentAsyncIterator<GroupedByKey<T>> {
+        return new FluentAsyncIterator(groupIterator(this.source, key));
     }
 
-    map<U>(func: (i: T) => U): FluentAsyncGenerator<U> {
-        return new FluentAsyncGenerator(mapGenerator(this.source, func));
+    map<U>(func: (i: T) => U): FluentAsyncIterator<U> {
+        return new FluentAsyncIterator(mapIterator(this.source, func));
     }
 
-    filter(predicate: (p: T) => boolean): FluentAsyncGenerator<T> {
-        return new FluentAsyncGenerator(filterGenerator(this.source, predicate));
+    filter(predicate: (p: T) => boolean): FluentAsyncIterator<T> {
+        return new FluentAsyncIterator(filterIterator(this.source, predicate));
     }
 }
