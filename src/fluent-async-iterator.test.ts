@@ -159,4 +159,49 @@ describe('FluentAsyncIterator', () => {
         assert.deepEqual(result, [4])
     })
 
+    it('can ensure there is an interval between calls', async () => {
+        const start = Date.now()
+        async function* source() {
+            yield 1
+            yield 2
+        }
+        const delayed = iterator(source()).interval(50).iterable()
+        const expectationsOnIteration = [
+            { value: 1, timeVerification: t => t > 50 && t < 60 },
+            { value: 2, timeVerification: t => t > 100 },
+        ]
+        let i = 0;
+        for await (const result of delayed) {
+            assert.equal(result, expectationsOnIteration[i].value);
+            const timePassed = Date.now() - start;
+            assert(expectationsOnIteration[i].timeVerification(timePassed), `${i}:${timePassed}`);
+            i++
+        }
+        assert.equal(i, 2)
+    });
+
+    it('takes into account time already passed during interval', async () => {
+        const start = Date.now()
+        async function* source() {
+            yield 1
+            await delay(40)
+            yield 2
+        }
+        const delayed = iterator(source()).interval(50).iterable()
+        const expectationsOnIteration = [
+            { value: 1, timeVerification: t => t > 50 && t < 60 },
+            { value: 2, timeVerification: t => t > 100 && t < 120 },
+        ]
+        let i = 0;
+        for await (const result of delayed) {
+            assert.equal(result, expectationsOnIteration[i].value);
+            const timePassed = Date.now() - start;
+            assert(expectationsOnIteration[i].timeVerification(timePassed), `${i}:${timePassed}`);
+            i++
+        }
+        assert.equal(i, 2)
+    });
+
+    function delay(ms) { return new Promise(resolve => setTimeout(resolve, ms)) };
+
 });

@@ -53,6 +53,20 @@ export async function* filterIterator<T>(source: AsyncIterable<T>, predicate: (p
     }
 }
 
+export async function* intervalIterator<T>(source: AsyncIterable<T>, ms: number): AsyncIterable<T> {
+    let lastExecutedEpoch = Date.now();
+    for await (const item of source) {
+        const currentTime = Date.now();
+        await delay(ms - (currentTime - lastExecutedEpoch));
+        lastExecutedEpoch = Date.now();
+        yield item;
+    }
+}
+
+function delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export function iterator<T>(source: AsyncIterable<T>): FluentAsyncIterator<T> {
     return new FluentAsyncIterator(source);
 }
@@ -86,5 +100,9 @@ export class FluentAsyncIterator<T> {
 
     filter(predicate: (p: T) => boolean): FluentAsyncIterator<T> {
         return new FluentAsyncIterator(filterIterator(this.source, predicate));
+    }
+
+    interval(ms: number): FluentAsyncIterator<T> {
+        return new FluentAsyncIterator(intervalIterator(this.source, ms));
     }
 }
