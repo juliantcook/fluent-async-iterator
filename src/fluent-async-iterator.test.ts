@@ -162,13 +162,12 @@ describe('FluentAsyncIterator', () => {
     it('can ensure there is an interval between calls', async () => {
         const start = Date.now()
         async function* source() {
-            yield 1
-            yield 2
+            yield* [1, 2]
         }
         const delayed = iterator(source()).interval(50).iterable()
         const expectationsOnIteration = [
-            { value: 1, timeVerification: t => t > 50 && t < 60 },
-            { value: 2, timeVerification: t => t > 100 },
+            { value: 1, timeVerification: t => t < 10 },
+            { value: 2, timeVerification: t => t > 50 },
         ]
         let i = 0;
         for await (const result of delayed) {
@@ -183,20 +182,19 @@ describe('FluentAsyncIterator', () => {
     it('takes into account time already passed during interval', async () => {
         const start = Date.now()
         async function* source() {
-            yield 1
-            await delay(40)
-            yield 2
+            yield* [1, 2]
         }
         const delayed = iterator(source()).interval(50).iterable()
         const expectationsOnIteration = [
-            { value: 1, timeVerification: t => t > 50 && t < 60 },
-            { value: 2, timeVerification: t => t > 100 && t < 120 },
+            { value: 1, timeVerification: t => t < 5 },
+            { value: 2, timeVerification: t => t > 49 && t < 70 },
         ]
         let i = 0;
         for await (const result of delayed) {
             assert.equal(result, expectationsOnIteration[i].value);
             const timePassed = Date.now() - start;
             assert(expectationsOnIteration[i].timeVerification(timePassed), `${i}:${timePassed}`);
+            await delay(40)
             i++
         }
         assert.equal(i, 2)

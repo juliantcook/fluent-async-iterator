@@ -54,12 +54,11 @@ export async function* filterIterator<T>(source: AsyncIterable<T>, predicate: (p
 }
 
 export async function* intervalIterator<T>(source: AsyncIterable<T>, ms: number): AsyncIterable<T> {
-    let lastExecutedEpoch = Date.now();
     for await (const item of source) {
-        const currentTime = Date.now();
-        await delay(ms - (currentTime - lastExecutedEpoch));
-        lastExecutedEpoch = Date.now();
+        let deltaStart = Date.now();
         yield item;
+        let delta = Date.now() - deltaStart;
+        await delay(ms - delta);
     }
 }
 
