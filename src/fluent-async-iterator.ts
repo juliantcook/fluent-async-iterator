@@ -62,6 +62,19 @@ export async function* intervalIterator<T>(source: AsyncIterable<T>, ms: number)
     }
 }
 
+export async function* limitIterator<T>(source: AsyncIterable<T>, count: number): AsyncIterable<T> {
+    const gen = source as AsyncGenerator<T>;
+    let i = 0;
+    while (++i <= count) {
+        const { value, done } = await gen.next();
+        if (!done) {
+            yield value
+        } else {
+            break;
+        }
+    }
+}
+
 function delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -103,5 +116,9 @@ export class FluentAsyncIterator<T> {
 
     interval(ms: number): FluentAsyncIterator<T> {
         return new FluentAsyncIterator(intervalIterator(this.source, ms));
+    }
+
+    limit(count: number): FluentAsyncIterator<T> {
+        return new FluentAsyncIterator(limitIterator(this.source, count));
     }
 }

@@ -200,6 +200,28 @@ describe('FluentAsyncIterator', () => {
         assert.equal(i, 2)
     });
 
+    it('limit', async () => {
+        async function* source() {
+            yield* [1, 2, 3];
+        }
+        const stream = iterator(source());
+        const results = await stream.limit(2).collect();
+        assert.deepEqual(results, [1, 2]);
+    })
+
+    it('underlying iterator can have remaining items retrieved', async () => {
+        async function* source() {
+            yield* [1, 2, 3];
+        }
+        const sourceIterator = source()
+        let results = await iterator(sourceIterator).limit(0).collect();
+        assert.deepEqual(results, []);
+        results = await iterator(sourceIterator).limit(2).collect();
+        assert.deepEqual(results, [1, 2]);
+        results = await iterator(sourceIterator).collect();
+        assert.deepEqual(results, [3]);
+    })
+
     function delay(ms) { return new Promise(resolve => setTimeout(resolve, ms)) };
 
 });
