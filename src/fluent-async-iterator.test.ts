@@ -167,7 +167,7 @@ describe('FluentAsyncIterator', () => {
         const delayed = iterator(source()).interval(50).iterable()
         const expectationsOnIteration = [
             { value: 1, timeVerification: t => t < 10 },
-            { value: 2, timeVerification: t => t > 50 },
+            { value: 2, timeVerification: t => t >= 50 },
         ]
         let i = 0;
         for await (const result of delayed) {
@@ -223,5 +223,19 @@ describe('FluentAsyncIterator', () => {
     })
 
     function delay(ms) { return new Promise(resolve => setTimeout(resolve, ms)) };
+
+    it('can peek without effecting the stream', async () => {
+        async function* source() {
+            yield* [1, 2, 3, 4];
+        }
+        const nums: number[] = [];
+        const result = await iterator(source())
+            .peek(x => nums.push(x))
+            .filter(x => x != 1)
+            .limit(2)
+            .collect();
+        assert.deepEqual(result, [2, 3])
+        assert.deepEqual(nums, [1, 2, 3])
+    })
 
 });

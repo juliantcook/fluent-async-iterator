@@ -75,6 +75,13 @@ export async function* limitIterator<T>(source: AsyncIterable<T>, count: number)
     }
 }
 
+export async function* peekIterator<T>(source: AsyncIterable<T>, func: (i: T) => any): AsyncIterable<T> {
+    for await (const item of source) {
+        func(item);
+        yield item;
+    }
+}
+
 function delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -120,5 +127,9 @@ export class FluentAsyncIterator<T> {
 
     limit(count: number): FluentAsyncIterator<T> {
         return new FluentAsyncIterator(limitIterator(this.source, count));
+    }
+
+    peek(func: (i: T) => any): FluentAsyncIterator<T> {
+        return new FluentAsyncIterator(peekIterator(this.source, func));
     }
 }
