@@ -238,4 +238,14 @@ describe('FluentAsyncIterator', () => {
         assert.deepEqual(nums, [1, 2, 3])
     })
 
+    it('can split on a predicte', async () => {
+        async function* source() {
+            yield* [1, 2, 3, 4, 5];
+        }
+        const result = await iterator(source())
+            .split(x => x % 2 === 0)
+            .collect();
+        assert.deepEqual(result, [[1], [3], [5]])
+    })
+
 });

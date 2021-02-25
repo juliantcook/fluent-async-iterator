@@ -1,6 +1,6 @@
 {
     "name": "fluent-async-iterator",
-    "version": "0.0.6",
+    "version": "0.0.7",
     "description": "AsnycIterator wrapper to provide a fluent API.",
     "main": "dist/fluent-async-iterator.js",
     "files": [

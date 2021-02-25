@@ -82,6 +82,21 @@ export async function* peekIterator<T>(source: AsyncIterable<T>, func: (i: T) =>
     }
 }
 
+async function* splitIterator<T>(source: AsyncIterable<T>, predicate: (i: T) => boolean): AsyncIterable<T[]> {
+    let currentSplit: T[] = [];
+    for await (const item of source) {
+        if (predicate(item)) {
+            yield currentSplit;
+            currentSplit = []
+        } else {
+            currentSplit.push(item)
+        }
+    }
+    if (currentSplit.length > 0) {
+        yield currentSplit;
+    }
+}
+
 function delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -131,5 +146,9 @@ export class FluentAsyncIterator<T> {
 
     peek(func: (i: T) => any): FluentAsyncIterator<T> {
         return new FluentAsyncIterator(peekIterator(this.source, func));
+    }
+
+    split(predicate: (i: T) => boolean): FluentAsyncIterator<T[]> {
+        return new FluentAsyncIterator(splitIterator(this.source, predicate));
     }
 }
