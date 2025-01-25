@@ -75,6 +75,19 @@ describe('FluentAsyncIterator', () => {
         assert.deepEqual(await stream.collect(), [1, 2, 3, 4, 5])
     });
 
+    it('drains', async () => {
+        async function* source() {
+            yield* [1, 2, 3, 4, 5];
+        }
+        const results: number[] = []
+        const returned = await iterator(source())
+            .map(x => results.push(x * 2))
+            .drain();
+
+        assert.deepEqual(results, [2, 4, 6, 8, 10]);
+        assert.equal(returned, undefined);
+    })
+
     it('batches', async () => {
         async function* source() {
             yield* [1, 2, 3, 4, 5];

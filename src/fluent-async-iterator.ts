@@ -98,7 +98,7 @@ export async function* splitIterator<T>(source: AsyncIterable<T>, predicate: (i:
 }
 
 export async function* concurrentMapIterator<T, U>(source: AsyncIterable<T>, func: (i: T) => Promise<U>, count: number): AsyncIterable<U> {
-    const pool: { [k: number]: Promise<{ slot: number, result: U }> } = {};
+    const pool: { [slot: number]: Promise<{ slot: number, result: U }> } = {};
     let slot = 1;
     for await (const item of source) {
         if (slot <= count) {
@@ -132,6 +132,12 @@ export class FluentAsyncIterator<T> {
             results.push(item);
         }
         return results;
+    }
+
+    async drain(): Promise<void> {
+        for await (const _item of this.source) {
+            // do nothing
+        }
     }
 
     iterable(): AsyncIterable<T> {
