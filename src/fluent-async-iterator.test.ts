@@ -248,4 +248,40 @@ describe('FluentAsyncIterator', () => {
         assert.deepEqual(result, [[1], [3], [5]])
     })
 
+    it('can map concurrently', async () => {
+        const delayTimes = [
+            { id: 1, value: 1 },
+            { id: 2, value: 2 },
+            { id: 3, value: 3 },
+            { id: 4, value: 4 },
+            { id: 5, value: 1 }
+        ]
+        async function* source() {
+            yield * delayTimes
+        }
+        const results = await iterator(source())
+            .concurrentMap(async item => {
+                await delay(item.value * 10)
+                return item
+            }, 2)
+            .limit(4)
+            .collect()
+        assert.deepEqual(results, [
+            { id: 1, value: 1 },
+            { id: 2, value: 2 },
+            { id: 3, value: 3 },
+            { id: 5, value: 1 },
+        ])
+    })
+
+    it('can map concurrently nothing', async () => {
+        async function* source() {
+            yield * [] as number[]
+        }
+        const results = await iterator(source())
+            .concurrentMap(async n => n * 2, 4)
+            .collect()
+        assert.deepEqual(results, [])
+    })
+
 });

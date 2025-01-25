@@ -68,7 +68,7 @@ export async function* limitIterator<T>(source: AsyncIterable<T>, count: number)
     while (++i <= count) {
         const { value, done } = await gen.next();
         if (!done) {
-            yield value
+            yield value;
         } else {
             break;
         }
@@ -82,19 +82,37 @@ export async function* peekIterator<T>(source: AsyncIterable<T>, func: (i: T) =>
     }
 }
 
-async function* splitIterator<T>(source: AsyncIterable<T>, predicate: (i: T) => boolean): AsyncIterable<T[]> {
+export async function* splitIterator<T>(source: AsyncIterable<T>, predicate: (i: T) => boolean): AsyncIterable<T[]> {
     let currentSplit: T[] = [];
     for await (const item of source) {
         if (predicate(item)) {
             yield currentSplit;
-            currentSplit = []
+            currentSplit = [];
         } else {
-            currentSplit.push(item)
+            currentSplit.push(item);
         }
     }
     if (currentSplit.length > 0) {
         yield currentSplit;
     }
+}
+
+export async function* concurrentMapIterator<T, U>(source: AsyncIterable<T>, func: (i: T) => Promise<U>, count: number): AsyncIterable<U> {
+    const pool: { [k: number]: Promise<{ slot: number, result: U }> } = {};
+    let slot = 1;
+    for await (const item of source) {
+        if (slot <= count) {
+            const _slot = slot++; // local reference
+            pool[_slot] = func(item).then(result => ({ slot: _slot, result }));
+        } else {
+            yield Promise.race(Object.values(pool)).then((completed) => {
+                pool[completed.slot] = func(item).then(result => ({ slot: completed.slot, result }));
+                return completed.result;
+            });
+        }
+    }
+    yield* Object.values(pool)
+        .map(promise => promise.then(({ result }) => result));
 }
 
 function delay(ms: number): Promise<void> {
@@ -150,5 +168,15 @@ export class FluentAsyncIterator<T> {
 
     split(predicate: (i: T) => boolean): FluentAsyncIterator<T[]> {
         return new FluentAsyncIterator(splitIterator(this.source, predicate));
+    }
+
+    /**
+     * @param func - function to apply
+     * @param count - concurrent limit
+     *
+     * Does not maintain the order
+     */
+    concurrentMap<U>(func: (i: T) => Promise<U>, count: number): FluentAsyncIterator<U> {
+        return new FluentAsyncIterator(concurrentMapIterator(this.source, func, count));
     }
 }
