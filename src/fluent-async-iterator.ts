@@ -24,8 +24,14 @@ export async function* groupIterator<T>(sortedSource: AsyncIterable<T>, groupBy:
     }
 }
 
-export async function* mapIterator<T, U>(source: AsyncIterable<T>, func: (i: T) => U): AsyncIterable<U> {
+export async function* asyncMapIterator<T, U>(source: AsyncIterable<T>, func: (i: T) => U): AsyncIterable<U> {
     for await (const item of source) {
+        yield func(item);
+    }
+}
+
+export function* mapIterator<T, U>(source: Iterable<T>, func: (i: T) => U): Iterable<U> {
+    for (const item of source) {
         yield func(item);
     }
 }
@@ -114,12 +120,40 @@ export async function* concurrentMapIterator<T, U>(source: AsyncIterable<T>, fun
         .map(promise => promise.then(({ result }) => result));
 }
 
+export async function* concurrentIterator<T>(source: Iterable<Promise<T>>, count: number): AsyncIterable<T> {
+    const pool: { [slot: number]: Promise<{ slot: number, result: T }> } = {};
+    let slot = 1;
+    for (const promise of source) {
+        if (slot <= count) {
+            const _slot = slot++; // local reference
+            pool[_slot] = promise.then(result => ({slot: _slot, result}));
+        } else {
+            yield Promise.race(Object.values(pool)).then((completed) => {
+                pool[completed.slot] = promise.then(result => ({slot: completed.slot, result}));
+                return completed.result;
+            });
+        }
+    }
+    yield* Object.values(pool)
+        .map(promise => promise.then(({result}) => result));
+}
+
 function delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+export async function * toAsyncIterable<T>(source: Iterable<Promise<T>>): AsyncIterable<T> {
+    for (const item of source) {
+        yield item
+    }
+}
+
 export function iterator<T>(source: AsyncIterable<T>): FluentAsyncIterator<T> {
     return new FluentAsyncIterator(source);
+}
+
+export function promiseIterator<T>(source: Iterable<Promise<T>>): FluentPromiseIterator<T> {
+    return new FluentPromiseIterator(source);
 }
 
 export class FluentAsyncIterator<T> {
@@ -152,7 +186,7 @@ export class FluentAsyncIterator<T> {
     }
 
     map<U>(func: (i: T) => U): FluentAsyncIterator<U> {
-        return new FluentAsyncIterator(mapIterator(this.source, func));
+        return new FluentAsyncIterator(asyncMapIterator(this.source, func));
     }
 
     filter(predicate: (p: T) => boolean): FluentAsyncIterator<T> {
@@ -183,5 +217,17 @@ export class FluentAsyncIterator<T> {
      */
     concurrentMap<U>(func: (i: T) => Promise<U>, count: number): FluentAsyncIterator<U> {
         return new FluentAsyncIterator(concurrentMapIterator(this.source, func, count));
+    }
+}
+
+export class FluentPromiseIterator<T> {
+    constructor(private source: Iterable<Promise<T>>) { }
+
+    concurrentResolve(count: number): FluentAsyncIterator<T> {
+        return new FluentAsyncIterator<T>(concurrentIterator(this.source, count));
+    }
+    
+    asyncIterator(): FluentAsyncIterator<T> {
+        return new FluentAsyncIterator(toAsyncIterable(this.source));
     }
 }
