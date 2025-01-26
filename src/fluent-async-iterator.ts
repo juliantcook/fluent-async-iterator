@@ -33,11 +33,10 @@ export async function* mapIterator<T, U>(source: AsyncIterable<T>, func: (i: T) 
 export async function* batchIterator<T>(source: AsyncIterable<T>, size: number): AsyncIterable<T[]> {
     let batch: T[] = [];
     for await (const item of source) {
-        if (batch.length < size) {
-            batch.push(item);
-        } else {
+        batch.push(item);
+        if (batch.length === size) {
             yield batch;
-            batch = [item];
+            batch = [];
         }
     }
     if (batch.length > 0) {
