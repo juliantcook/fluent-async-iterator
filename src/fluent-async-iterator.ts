@@ -102,40 +102,54 @@ export async function* splitIterator<T>(source: AsyncIterable<T>, predicate: (i:
     }
 }
 
+type ConcurrencyPool<U> = { [slot: number]: Promise<{ slot: number, result: U }> }
+
 export async function* concurrentMapIterator<T, U>(source: AsyncIterable<T>, func: (i: T) => Promise<U>, count: number): AsyncIterable<U> {
-    const pool: { [slot: number]: Promise<{ slot: number, result: U }> } = {};
-    let slot = 1;
+    const pool: ConcurrencyPool<U> = {};
+    const slots = [...Array(count).keys()]
+    if (slots.length < 1) {
+        throw new Error('Invalid concurrency count')
+    }
     for await (const item of source) {
-        if (slot <= count) {
-            const _slot = slot++; // local reference
-            pool[_slot] = func(item).then(result => ({ slot: _slot, result }));
-        } else {
+        const slot = slots.pop()!;
+        pool[slot] = func(item).then(result => ({slot, result}));
+        if (slots.length < 1) {
             yield Promise.race(Object.values(pool)).then((completed) => {
-                pool[completed.slot] = func(item).then(result => ({ slot: completed.slot, result }));
+                slots.push(completed.slot)
                 return completed.result;
             });
         }
     }
-    yield* Object.values(pool)
-        .map(promise => promise.then(({ result }) => result));
+    yield * racingDrain(pool);
 }
 
 export async function* concurrentIterator<T>(source: Iterable<Promise<T>>, count: number): AsyncIterable<T> {
-    const pool: { [slot: number]: Promise<{ slot: number, result: T }> } = {};
-    let slot = 1;
+    const pool: ConcurrencyPool<T> = {};
+    const slots = [...Array(count).keys()]
+    if (slots.length < 1) {
+        throw new Error('Invalid concurrency count')
+    }
     for (const promise of source) {
-        if (slot <= count) {
-            const _slot = slot++; // local reference
-            pool[_slot] = promise.then(result => ({slot: _slot, result}));
-        } else {
+        const slot = slots.pop()!;
+        pool[slot] = promise.then(result => ({slot, result}));
+        if (slots.length < 1) {
             yield Promise.race(Object.values(pool)).then((completed) => {
-                pool[completed.slot] = promise.then(result => ({slot: completed.slot, result}));
+                slots.push(completed.slot)
                 return completed.result;
             });
         }
     }
-    yield* Object.values(pool)
-        .map(promise => promise.then(({result}) => result));
+    yield * racingDrain(pool);
+}
+
+async function* racingDrain<T>(pool: ConcurrencyPool<T>): AsyncIterable<T> {
+    let promises = Object.values(pool)
+    while (promises.length > 0) {
+        const completed = await Promise.race(promises);
+        yield completed.result;
+        delete pool[completed.slot]
+        promises = Object.values(pool)
+    }
 }
 
 function delay(ms: number): Promise<void> {
